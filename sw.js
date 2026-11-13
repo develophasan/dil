@@ -1,9 +1,9 @@
 /* Konuşma Kampı — çevrimdışı önbellek. Ağdan yalnızca uygulama dosyaları alınır; kullanıcı verisi hiçbir zaman gönderilmez. */
-const VERSION = 'kk-v1.0.1';
+const VERSION = 'kk-v1.1.0';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',
-  './js/content.js', './js/store.js', './js/audio.js', './js/mouth.js', './js/engine.js', './js/ui.js', './js/child.js', './js/parent.js', './js/app.js',
+  './js/content2.js', './js/content.js', './js/store.js', './js/audio.js', './js/mouth.js', './js/engine.js', './js/ui.js', './js/child.js', './js/parent.js', './js/acts.js', './js/app.js',
   './fonts/alfa-slab-one-latin-400-normal.woff2', './fonts/alfa-slab-one-latin-ext-400-normal.woff2',
   './fonts/anton-latin-400-normal.woff2', './fonts/anton-latin-ext-400-normal.woff2',
   './fonts/nunito-latin-600-normal.woff2', './fonts/nunito-latin-ext-600-normal.woff2',

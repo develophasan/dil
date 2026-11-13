@@ -118,15 +118,13 @@ ayakkabı|👟;bilgisayar|💻;çikolata|🍫;elbise|👗;ambulans|🚑;traktör
 `;
   const WORDS = [];
   const WORD_MAP = {};
-  W.split(';').forEach((p) => {
-    const t = p.trim();
-    if (!t) return;
-    const [w, e] = t.split('|');
-    if (!w || WORD_MAP[w]) return;
+  function addWord(w, e) {
+    if (!w || WORD_MAP[w]) return WORD_MAP[w] || null;
     const syl = syllabify(w);
     const o = { id: 'w:' + w, kind: 'w', w, e, syl, n: syl.length, init: [...w][0], fin: [...w].slice(-1)[0], snd: [...new Set([...w])] };
-    WORDS.push(o); WORD_MAP[w] = o;
-  });
+    WORDS.push(o); WORD_MAP[w] = o; return o;
+  }
+  W.split(';').forEach((p) => { const t = p.trim(); if (!t) return; const [w, e] = t.split('|'); addWord(w, e); });
 
   /* ---------- Heceler ---------- */
   const SYLS = {};
@@ -163,15 +161,15 @@ ayakkabı|👟;bilgisayar|💻;çikolata|🍫;elbise|👗;ambulans|🚑;traktör
   const idsOf = (arr) => arr.map((x) => x.id);
 
   const STAGES = [
-    { id: 1, name: 'Isınma', icon: '🔥', desc: 'Ağız, dil ve nefes kasları + ünlüler' },
-    { id: 2, name: 'Sesler ve Heceler', icon: '🎵', desc: 'Ünsüz + ünlü heceler' },
+    { id: 1, name: 'Isınma', icon: '🔥', desc: 'Ağız, dil, nefes, ses taklidi ve ünlüler' },
+    { id: 2, name: 'Sesler ve Heceler', icon: '🎵', desc: 'Heceler, hız, ritim ve tekerleme' },
     { id: 3, name: 'İlk Kelimeler', icon: '🏀', desc: 'Başlangıç sesine göre kelimeler' },
     { id: 4, name: 'Kelime Ustası', icon: '🏆', desc: 'Kelime sonu, uzun kelimeler, zor sesler' },
     { id: 5, name: 'Cümle Maçı', icon: '👑', desc: 'İki ve üç kelimelik cümleler' },
   ];
 
   const hardWords = WORDS.filter((x) => /[rsşzç]/.test(x.w.slice(1)));
-  const U = [
+  const U0 = [
     // Aşama 1
     { id: 'u1', st: 1, t: 'Ağız Isınması', items: ['m:kiss_smile', 'm:big_a', 'm:balloon', 'm:fish'], tip: 'Aynada birlikte yapın; önce siz gösterin.' },
     { id: 'u2', st: 1, t: 'Dil Isınması', items: ['m:tongue_out', 'm:tongue_updown', 'm:lick', 'm:tongue_circle', 'm:cluck'], tip: 'Dil hareketleri çocuğa komik gelir; gülmesi serbest.' },
@@ -204,12 +202,47 @@ ayakkabı|👟;bilgisayar|💻;çikolata|🍫;elbise|👗;ambulans|🚑;traktör
     { id: 'u25', st: 5, t: 'Günlük İfadeler', items: Object.values(PHRASES).filter((p) => p.g === 'p2').map((p) => p.id), tip: 'Günlük hayatta gerçek fırsatlarda kullanın.' },
     { id: 'u26', st: 5, t: 'Üç Kelimelik Cümleler', items: Object.values(PHRASES).filter((p) => p.g === 'p3').map((p) => p.id), tip: 'Uzun cümlede nefes almayı unutmayın.' },
   ];
+  const LEGACY_UNIT_IDS = U0.map((u) => u.id);
+
+  /* ---------- Ek içerik (content2.js verisi) ---------- */
+  const D2 = G.KK.DATA2;
+  const letters = (t) => [...new Set(String(t).toLocaleLowerCase('tr-TR').replace(/[^a-zçğıöşü]/g, ''))];
+  const AN = {}, LO = {}, RH = {}, TK = {}, SL = {};
+  [...D2.animals, ...D2.things].forEach(([key, e, t]) => { const id = 'a:' + key; AN[id] = { id, kind: 'a', w: key, e, t, snd: letters(t) }; });
+  D2.loud.forEach(([m, e, txt]) => D2.loudWords.forEach(([w, we]) => { const id = 'l:' + m + ':' + w; LO[id] = { id, kind: 'l', mode: m, e, txt, w, we, snd: letters(w) }; }));
+  D2.rhythm.forEach(([c, b]) => { const id = 'r:' + c + ':' + b; RH[id] = { id, kind: 'r', c, syl: c.split('-'), bpm: b, n: c.split('-').length, snd: letters(c) }; });
+  D2.rhymes.forEach((r, i) => { const id = 't:' + (i + 1); TK[id] = { id, kind: 't', w: r.t, e: r.e, bpm: r.bpm, lines: r.lines, snd: letters(r.lines.join('')) }; });
+  D2.slow.forEach((t) => { const id = 'k:' + t; const toks = []; t.split(' ').forEach((w, wi) => syllabify(w).forEach((sy) => toks.push([sy, wi]))); SL[id] = { id, kind: 'k', w: t, toks, snd: letters(t) }; });
+
+  /* Kategorilerdeki kelimeler (ünitelere dahil değil; kelime listesine/etkinliklere eklenir) */
+  const CATS = {};
+  Object.keys(D2.cats).forEach((cid) => {
+    const [name, e, list] = D2.cats[cid]; CATS[cid] = { id: cid, name, e, words: [] };
+    list.forEach(([w, em]) => { const o = addWord(w, em); if (o) { (o.cat = o.cat || []).push(cid); CATS[cid].words.push(o.id); } });
+  });
+
+  const NU = [
+    { id: 'a1', st: 1, t: 'Hayvan Sesleri', items: D2.animals.map((a) => 'a:' + a[0]), tip: 'Önce siz taklit edin; çocuk resme bakıp aynı sesi çıkarsın. Gülmek serbest!' },
+    { id: 'a2', st: 1, t: 'Araç ve Çevre Sesleri', items: D2.things.map((a) => 'a:' + a[0]), tip: 'Sesleri uzatıp kısaltarak oynayın: “vıııın… bip bip!”.' },
+    { id: 'l1', st: 1, t: 'Sesim: Fısılda, Konuş, Bağır', items: Object.keys(LO), tip: 'Ses şiddetini birlikte ayarlayın. Bağırma oyununu kısa tutun.' },
+    { id: 'r1', st: 2, t: 'Hız ve Ritim', items: Object.keys(RH), tip: 'Yavaş tempoyla başlayın; hız çocuğa göre artsın.' },
+    { id: 't1', st: 2, t: 'Tekerleme ve Şarkı', items: Object.keys(TK), tip: 'Ritimle, birlikte söyleyin. Hareketle (el çırpma) destekleyin.' },
+  ];
+  const ORDER = ['u1', 'u2', 'u3', 'a1', 'a2', 'u4', 'u5', 'u6', 'l1', 'u7', 'u8', 'u9', 'u10', 'u11', 'u12', 'u13', 'r1', 't1', 'u14', 'u15', 'u16', 'u17', 'u18', 'u19', 'u20', 'u21', 'u22', 'u23', 'u24', 'u25', 'u26'];
+  const BYID = {}; [...U0, ...NU].forEach((u) => { BYID[u.id] = u; });
+  const U = ORDER.map((id) => BYID[id]);
   const UNIT_MAP = {}; U.forEach((u, i) => { u.i = i; UNIT_MAP[u.id] = u; });
+  const LEVEL_START = ['u1', 'u4', 'u7', 'u14', 'u24'];
 
   /* ---------- Item çözümleyici ---------- */
   function getItem(id, custom) {
     if (id.startsWith('cw:')) return (custom && custom.find((c) => c.id === id)) || null;
     const k = id[0], key = id.slice(2);
+    if (k === 'a') return AN[id] || null;
+    if (k === 'l') return LO[id] || null;
+    if (k === 'r') return RH[id] || null;
+    if (k === 't') return TK[id] || null;
+    if (k === 'k') return SL[id] || null;
     if (k === 'w') return WORD_MAP[key] || (custom && custom.find((c) => c.id === id)) || null;
     if (k === 's') return SYLS[key] || makeSyl(key);
     if (k === 'v') return VOW[key] || null;
@@ -226,5 +259,5 @@ ayakkabı|👟;bilgisayar|💻;çikolata|🍫;elbise|👗;ambulans|🚑;traktör
   const AVATARS = ['🦁', '🐯', '🐻', '🦊', '🐼', '🐸', '🦄', '🐙', '🐶', '🐱', '🚀', '⭐'];
 
   G.KK = G.KK || {};
-  Object.assign(G.KK, { VOWELS, isV, trUp, trLow, syllabify, SOUND, MOUTH_GAMES, BREATH_GAMES, WORDS, WORD_MAP, SYLS, makeSyl, CHAINS, CHAIN_MAP, VOW, PHRASES, STAGES, UNITS: U, UNIT_MAP, getItem, TARGET_SOUNDS, AVATARS });
+  Object.assign(G.KK, { VOWELS, isV, trUp, trLow, syllabify, SOUND, MOUTH_GAMES, BREATH_GAMES, WORDS, WORD_MAP, SYLS, makeSyl, CHAINS, CHAIN_MAP, VOW, PHRASES, STAGES, UNITS: U, UNIT_MAP, getItem, TARGET_SOUNDS, AVATARS, addWord, CATS, LEGACY_UNIT_IDS, LEVEL_START, ANIMALS: AN, LOUD: LO, RHYTHM: RH, RHYMES: TK, SLOW: SL, letters });
 })(window);

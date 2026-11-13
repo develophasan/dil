@@ -113,7 +113,7 @@
         h('div.todayballs', { 'aria-label': 'Bugünkü antrenmanlar' }, range(max).map((i) => h('span.tb' + (i < today ? '.on' : ''), icon('ball', 28))), h('small', today + ' / ' + max))),
       h('section.tiles',
         tile('map', 'Lig Yolu', 'Nerede olduğuna bak', () => U.go('/map')),
-        tile('play', 'Oyunlar', 'Dinle ve bul, ağız oyunları', () => U.go('/games')),
+        tile('play', 'Etkinlikler', 'Dinleme, dil, ses, hafıza', () => U.go('/games')),
         tile('trophy', 'Kupalar', E.trophies(c).filter((t) => t.got).length + ' / ' + E.trophies(c).length, () => U.go('/trophies')))));
     function tile(ic, t, sub, fn) { return h('button.tile', { onclick: fn }, h('span.ticon', ic === 'map' ? h('span.mapi', '🗺️') : icon(ic, 34)), h('b', t), h('small', sub)); }
   });
@@ -216,7 +216,15 @@
       if (cleanupItem) { cleanupItem(); cleanupItem = null; }
       if (idx >= steps.length || (over && idx > 0 && idx >= 1 && !steps[idx - 1].warm)) { finish(false); return; }
       drawHoop(); stage.innerHTML = '';
-      const s = steps[idx]; const it = E.item(c, s.id);
+      const s = steps[idx];
+      if (s.type === 'act') {
+        const aui = K.acts.run(c, s.act, { rounds: s.rounds, inSession: true }, (res) => {
+          if (res && !res.skip) marks.push({ id: 'x:' + s.act, r: res.r, reps: res.n, warm: true, act: true });
+          idx++; K.audio.sfx('ok'); setTimeout(nextStep, 250);
+        });
+        cleanupItem = aui.destroy; stage.appendChild(aui.el); return;
+      }
+      const it = E.item(c, s.id);
       if (!it) { idx++; nextStep(); return; }
       let ui;
       const done = (res) => {
@@ -306,6 +314,8 @@
     return { el, destroy() { timers.forEach((t) => { clearTimeout(t); clearInterval(t); }); K.audio.stop(); } };
   }
 
+  K.repItemUI = (c, it, done) => repItemUI(c, it, done);
+
   /* ---------- Tekrarlı öğe: ünlü / hece / zincir / kelime / cümle ---------- */
   function repItemUI(c, it, done) {
     const R = c.settings.reps; let n = 0; let m = null, sv = null, player = null; const kill = [];
@@ -318,7 +328,8 @@
     const actions = h('div.actions', say, tap);
     const visual = h('div.visual');
     const skip = h('button.linkbtn.light', { onclick: () => done({ skip: true }) }, 'Atla');
-    const head = h('div.itemhead', h('span.etag', { vi: 1 }, it.kind === 'v' ? 'Ünlü' : it.kind === 's' ? 'Hece' : it.kind === 'c' ? 'Hece zinciri' : it.kind === 'p' ? 'Cümle' : 'Kelime'));
+    const KN = { v: 'Ünlü', s: 'Hece', c: 'Hece zinciri', p: 'Cümle', w: 'Kelime', a: 'Ses taklidi', r: 'Hız ve ritim', l: 'Ses şiddeti', t: 'Tekerleme', k: 'Kaplumbağa' };
+    const head = h('div.itemhead', h('span.etag', KN[it.kind] || 'Çalışma'));
 
     const mouthBox = (pose, label) => { const mm = K.mouth.create(h('div'), { pose: 'closed', label }); const b = h('div.mouthbox' + (it.kind === 'w' ? '.mini' : '')); b.appendChild(mm.el); return { mm, b }; };
     const pads = (arr) => h('div.pads', arr.map((s, i) => h('button.pad', { onclick: (e) => { K.audio.sfx('pad'); const b = e.currentTarget; b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit'); } }, h('span', s), h('small', String(i + 1)))));
@@ -348,6 +359,8 @@
     } else if (it.kind === 'p') {
       hint.textContent = 'Birlikte söyleyelim.';
       visual.append(h('div.pic', h('span.emoji', it.e)), h('div.word.phrase', it.w.split(' ').map((s, i) => h('span.sy.s' + (i % 2), s))));
+    } else {
+      const xv = K.acts.itemVisual(c, it); hint.textContent = xv.hint; visual.append(...xv.nodes); kill.push(xv.destroy);
     }
 
     function tapFn() {

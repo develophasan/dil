@@ -59,7 +59,11 @@
         case 'w': case 'p': return item.w.replace('…', '');
         case 's': return item.s;
         case 'v': return item.v;
-        case 'c': return item.syl.join(', ');
+        case 'c': case 'r': return item.syl.join(', ');
+        case 'a': return item.t;
+        case 'l': return item.w;
+        case 't': return item.lines.join('. ');
+        case 'k': return item.w;
         case 'm': case 'b': return item.say || item.name;
         default: return item.w || '';
       }

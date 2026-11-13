@@ -8,11 +8,14 @@
 ## Özellikler
 - **Çocuk modu:** büyük düğmeler, forma/saha temalı oyunlaştırma, 3–4 dk'lık mini antrenman, bitişte basket atışı ve yıldız, kupalar, "Lig Yolu" haritası.
 - **Animasyonlu ağız modeli** (önden) ve **dilin yeri** (yan kesit): A E I İ O Ö U Ü ve 20 ünsüz için.
-- **Aşamalı program (5 aşama, 26 ünite):** Isınma → Sesler ve Heceler → İlk Kelimeler → Kelime Ustası → Cümle Maçı. 176 resimli kelime, 12 hece zinciri (pa-ta-ka…), 39 cümle.
-- **Veli işaretler:** Rahat / Yaklaşık / Tekrar. Aralıklı tekrar (Leitner) ile zorlanılan öğeler daha sık gelir.
-- **Her çocuğa özel:** başlangıç noktası, dikkat süresi, öğe sayısı, tekrar sayısı, odak sesler, sabitleme/gizleme, kendi kelimeniz (fotoğraf + kendi sesiniz), günlük antrenman sınırı, çoklu çocuk profili.
-- **Veli alanı (PIN korumalı):** özet, ilerleme ölçütü (hazırsa sonraki üniteye geç), ses başarı grafiği, notlar, yazdırılabilir **gelişim raporu** (PDF), veli rehberi, yedek al / geri yükle.
-- **Gizlilik:** CSP ile `connect-src 'none'` — tarayıcı seviyesinde bile ağa veri gönderemez.
+- **Aşamalı program (5 aşama, 31 ünite):** Isınma (ağız-dil-nefes, **hayvan ve araç sesleri**, ünlüler, **ses şiddeti**) → Sesler ve Heceler (heceler, **hız ve ritim**, **tekerleme**) → İlk Kelimeler → Kelime Ustası → Cümle Maçı. 217 resimli kelime, 39 cümle.
+- **Dinleme oyunları:** ilk sesi bul, kaç hece, kafiye bul, aynı mı farklı mı, ses yağmuru.
+- **Dil Dünyası:** kelime kategorileri, eylem kartları, zıtlar, yönerge uygulama (sahne), cümle kurma, soru–cevap, ekler, resimli hikâye, duygular, günlük iletişim.
+- **Oyunlar:** hafıza kartı (hedef sesli), ağız oyunları, **Ağız Aynası** (kamerada kendini gör, görüntü kaydedilmez), ses ve ritim, isteğe bağlı **kaplumbağa konuşma** (yavaş başlangıç; uzman önerisiyle).
+- **Veli işaretler:** Rahat / Yaklaşık / Tekrar. Aralıklı tekrar (Leitner) ile zorlanılan öğeler daha sık gelir. Her antrenmana günün kısa dil etkinliği de eklenir.
+- **Her çocuğa özel:** başlangıç noktası, dikkat süresi, öğe/tekrar sayısı, odak sesler, sabitleme/gizleme, kendi kelimeniz (fotoğraf + kendi sesiniz), günlük antrenman sınırı, çoklu çocuk profili.
+- **Veli alanı (PIN korumalı):** özet, ilerleme ölçütü, ses başarı grafiği, etkinlik sonuçları, günün ev görevleri, notlar, yazdırılabilir **gelişim raporu** (PDF), veli rehberi, yedek al / geri yükle.
+- **Gizlilik:** CSP ile ağa çıkış kapalı; hesap, sunucu, izleyici yok. Kamera ve mikrofon yalnızca siz izin verdiğinizde, kayıt yapmadan kullanılır.
 
 ## Yayınlama (statik site)
 Uygulama derleme gerektirmez; klasörün tamamı statik dosyadır. **HTTPS** gerekir (çevrimdışı çalışma, ana ekrana ekleme ve mikrofon için).
@@ -29,7 +32,9 @@ Kullanıcılar tarayıcıdan açıp **“Ana ekrana ekle”** ile uygulama gibi 
 ```
 index.html  manifest.webmanifest  sw.js  _headers
 css/app.css
+js/content2.js  ek içerik verileri (sesler, tekerlemeler, kategoriler, sorular…)
 js/content.js   içerik: aşamalar, üniteler, sesler, kelimeler, cümleler
+js/acts.js      etkinlikler: dinleme, dil, hafıza, ayna, yeni öğe ekranları
 js/store.js     yerel depolama, yedek
 js/audio.js     sesli okuma, veli kaydı, efektler
 js/mouth.js     ağız ve dil animasyonları
@@ -46,4 +51,4 @@ fonts/ icons/
 Alfa Slab One, Anton, Nunito — SIL Open Font License 1.1 (`fonts/LICENSE-*.txt`). Renk paleti: mor `#552583`, sarı `#fdb927`, siyah, beyaz, gri `#525252`. Uygulama herhangi bir spor takımı veya markayla bağlantılı değildir.
 
 ## Sürüm
-1.0.0
+1.1.0 — dinleme oyunları, Dil Dünyası, ses taklidi/ritim/tekerleme, ağız aynası, ev görevleri.

@@ -85,7 +85,11 @@
     main.forEach((id) => taken.add(id));
     // yeni (ana) öğeler önce, tekrar/ekstra sonra
     [...main, ...extra].forEach((id) => steps.push({ type: 'item', id }));
-    if (!steps.some((s) => !s.warm)) { // ünite boşsa (tümü gizli) güvenli yedek
+    if (st.langSlot && K.acts && K.acts.rotation && K.acts.rotation.length) {
+      const rot = K.acts.rotation; const idx = (c.actIdx || 0) % rot.length; c.actIdx = idx + 1;
+      steps.push({ type: 'act', act: rot[idx], rounds: 3, warm: true });
+    }
+    if (!steps.some((s) => !s.warm && s.type === 'item')) { // ünite boşsa (tümü gizli) güvenli yedek
       const any = pick(c, u.items, 1, new Set()); any.forEach((id) => steps.push({ type: 'item', id }));
     }
     return steps;
@@ -139,6 +143,25 @@
     c.cur = idx; K.store.save();
   }
 
+  /* ---------- Etkinlik (oyun) kaydı ---------- */
+  function logGame(c, type, ok, total, mode) {
+    const g = { t: Date.now(), day: K.todayKey(), type, ok: Math.round(ok * 10) / 10, total, mode: mode || 'auto' };
+    c.games.push(g); if (c.games.length > 600) c.games.shift();
+    const a = c.acts[type] || (c.acts[type] = { n: 0, ok: 0, total: 0, last: 0 }); a.n++; a.ok += ok; a.total += total; a.last = g.t;
+    K.store.save(); return g;
+  }
+
+  /* ---------- Günün ev görevleri ---------- */
+  function homeTasks(c) {
+    const u = K.UNITS[Math.min(c.cur, K.UNITS.length - 1)]; const pool = K.DATA2.homeTasks[u.st] || K.DATA2.homeTasks[1];
+    const day = dayNum(Date.now()); const out = [];
+    const tg = (c.settings.targets || []).filter((l) => !K.isV(l));
+    if (tg.length) { const l = tg[day % tg.length]; out.push('Gün içinde “' + K.trUp(l) + '” sesiyle başlayan 3 nesneyi gösterip adlandırın.'); }
+    for (let i = 0; out.length < 3 && i < pool.length; i++) { const t = pool[(day + i) % pool.length]; if (out.indexOf(t) < 0) out.push(t); }
+    return out;
+  }
+  function taskState(c) { const k = K.todayKey(); if (!c.tasks[k]) c.tasks[k] = [false, false, false]; return c.tasks[k]; }
+
   /* ---------- Kupalar ---------- */
   const stageStart = (st) => K.UNITS.findIndex((u) => u.st === st);
   const passed = (c, idx) => (c.unitLog || []).some((l) => l.from < idx && l.to >= idx);
@@ -153,6 +176,9 @@
     { id: 'm10', n: 'A', name: 'Ünlü Ustası', desc: 'Ünlülerin çoğunu rahat söylüyorsun.', ok: (c) => [...K.VOWELS].filter((v) => c.items['v:' + v] && c.items['v:' + v].box >= 2).length >= 4 },
     { id: 'w10', n: '10', name: '10 Kelime', desc: '10 kelimeyi rahat söyledin.', ok: (c) => Object.keys(c.items).filter((id) => id[0] === 'w' && c.items[id].box >= 2).length >= 10 },
     { id: 'w30', n: '30', name: '30 Kelime', desc: '30 kelime! Harika.', ok: (c) => Object.keys(c.items).filter((id) => id[0] === 'w' && c.items[id].box >= 2).length >= 30 },
+    { id: 'x1', n: '🐮', name: 'Ses Taklitçisi', desc: '8 hayvan/araç sesini rahat taklit ettin.', ok: (c) => Object.keys(c.items).filter((id) => id[0] === 'a' && c.items[id].box >= 2).length >= 8 },
+    { id: 'x2', n: '👂', name: 'Dinleme Ustası', desc: '10 dinleme oyunu oynadın.', ok: (c) => c.games.filter((g) => ['fsound', 'sylcount', 'rhyme', 'samediff', 'rain'].includes(g.type)).length >= 10 },
+    { id: 'x3', n: '🌍', name: 'Dil Dünyası Kâşifi', desc: '10 dil etkinliği tamamladın.', ok: (c) => c.games.filter((g) => ['cat', 'action', 'opp', 'dir', 'build', 'qa', 'suffix', 'story', 'emotion', 'talk'].includes(g.type)).length >= 10 },
     { id: 'g1', n: '🔥', name: 'Isınma Tamam', desc: 'Isınma aşamasını bitirdin.', ok: (c) => passed(c, stageStart(2)) },
     { id: 'g2', n: '🎵', name: 'Hece Kralı', desc: 'Heceler aşamasını bitirdin.', ok: (c) => passed(c, stageStart(3)) },
     { id: 'g3', n: '🏀', name: 'Kelime Avcısı', desc: 'İlk kelimeler aşamasını bitirdin.', ok: (c) => passed(c, stageStart(4)) },
@@ -167,5 +193,5 @@
   }
   function trackStreak(c) { const s = streak(c); if (s > (c.bestStreak || 0)) c.bestStreak = s; }
 
-  K.engine = { record, buildSession, readiness, sessionsToday, canPlay, streak, weekCounts, totalStars, totalMinutes, finishSession, setUnit, trophies, newTrophies, trackStreak, score, stat, item, isHidden, unitItems, dayNum };
+  K.engine = { logGame, homeTasks, taskState, record, buildSession, readiness, sessionsToday, canPlay, streak, weekCounts, totalStars, totalMinutes, finishSession, setUnit, trophies, newTrophies, trackStreak, score, stat, item, isHidden, unitItems, dayNum };
 })(window);

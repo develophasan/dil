@@ -14,12 +14,12 @@
   }
   function newChild(o) {
     const lvl = o.level || 0;
-    const startUnit = [0, 3, 6, 13, 23][lvl] != null ? [0, 3, 6, 13, 23][lvl] : 0; // seviye → başlangıç ünitesi (index)
+    const su = K.UNIT_MAP[K.LEVEL_START[lvl]]; const startUnit = su ? su.i : 0; // seviye → başlangıç ünitesi (index)
     const min = o.minutes || 4;
     return { id: uid('c'), name: o.name || 'Çocuk', age: o.age || '', avatar: o.avatar || 0, created: Date.now(),
       cur: startUnit, level: lvl,
-      settings: { minutes: min, perSession: min <= 2 ? 2 : min <= 4 ? 3 : 4, reps: 3, warmup: true, breath: true, review: true, targets: [], autoAdvance: false },
-      items: {}, sessions: [], games: [], custom: [], pinned: [], hidden: [], notes: [], seenTrophies: [] };
+      settings: { minutes: min, perSession: min <= 2 ? 2 : min <= 4 ? 3 : 4, reps: 3, warmup: true, breath: true, review: true, targets: [], autoAdvance: false, langSlot: true, slow: false },
+      items: {}, sessions: [], games: [], custom: [], pinned: [], hidden: [], notes: [], seenTrophies: [], acts: {}, tasks: {}, actIdx: 0, uv: 2 };
   }
 
   /* ---------- IndexedDB ---------- */
@@ -66,7 +66,13 @@
       st.children.forEach((c) => {
         const n = newChild({ name: c.name });
         c.settings = Object.assign({}, n.settings, c.settings || {});
-        ['items', 'custom'].forEach((k) => { if (!c[k]) c[k] = n[k]; });
+        ['items', 'custom', 'acts', 'tasks'].forEach((k) => { if (!c[k]) c[k] = n[k]; });
+        if (typeof c.actIdx !== 'number') c.actIdx = 0;
+        // Ünite sırası v2: eski (v1) ünite numaralarını kimlik üzerinden yeni sıraya taşı
+        if (!c.uv) {
+          const lg = K.LEGACY_UNIT_IDS; const mp = (i) => { const u = K.UNIT_MAP[lg[Math.max(0, Math.min(lg.length - 1, Number(i) || 0))]]; return u ? u.i : 0; };
+          c.cur = mp(c.cur); (c.unitLog || []).forEach((l) => { l.from = mp(l.from); l.to = mp(l.to); }); c.uv = 2;
+        }
         ['sessions', 'games', 'pinned', 'hidden', 'notes', 'seenTrophies'].forEach((k) => { if (!Array.isArray(c[k])) c[k] = []; });
         if (typeof c.cur !== 'number') c.cur = 0;
       });

@@ -3,14 +3,15 @@
   'use strict';
   const K = G.KK, U = K.ui, h = U.h, icon = U.icon, E = K.engine, S = K.store;
   const range = (n) => Array.from({ length: n }, (_, i) => i);
-  const VERSION = '1.0.0';
+  const VERSION = '1.1.0';
   K.parentUntil = 0;
 
   const label = (c, id) => {
+    if (id.startsWith('x:')) { const a = K.acts && K.acts.A[id.slice(2)]; return a ? a.name : id; }
     const it = E.item(c, id); if (!it) return id;
-    switch (it.kind) { case 'w': case 'p': return it.w; case 's': return K.trUp(it.s); case 'v': return K.trUp(it.v); case 'c': return it.syl.join('-'); default: return it.name || id; }
+    switch (it.kind) { case 'a': return it.w + ' (' + it.t + ')'; case 'r': return it.c + ' · ' + it.bpm; case 'l': return it.txt.split(' ')[0] + ': ' + it.w; case 't': return it.w; case 'k': return it.w; case 'w': case 'p': return it.w; case 's': return K.trUp(it.s); case 'v': return K.trUp(it.v); case 'c': return it.syl.join('-'); default: return it.name || id; }
   };
-  const kindName = { w: 'Kelime', s: 'Hece', v: 'Ünlü', c: 'Zincir', p: 'Cümle', m: 'Ağız oyunu', b: 'Nefes' };
+  const kindName = { w: 'Kelime', s: 'Hece', v: 'Ünlü', c: 'Zincir', p: 'Cümle', m: 'Ağız oyunu', b: 'Nefes', a: 'Ses taklidi', r: 'Ritim', l: 'Ses şiddeti', t: 'Tekerleme', k: 'Kaplumbağa' };
   const markIcon = (r) => h('span.mk.m' + r, icon(r === 2 ? 'check' : r === 1 ? 'tilde' : 'redo', 16));
 
   /* ======================= Yönlendirme ======================= */
@@ -85,9 +86,21 @@
     const hard = Object.keys(c.items).filter((id) => c.items[id].n >= 3 && E.score(c.items[id].hist.slice(-5)) < 0.5).sort((a, b) => E.score(c.items[a].hist) - E.score(c.items[b].hist)).slice(0, 6);
     wrap.appendChild(h('section.card', h('h2', 'Zorlanılan öğeler'), hard.length ? h('div.chips', hard.map((id) => h('button.chip' + (c.pinned.includes(id) ? '.on' : ''), { title: 'Sabitle / kaldır', onclick: (e) => { const i = c.pinned.indexOf(id); if (i >= 0) c.pinned.splice(i, 1); else c.pinned.push(id); S.save(); e.currentTarget.classList.toggle('on'); U.toast(i >= 0 ? 'Sabitleme kaldırıldı' : 'Her antrenmana eklenecek'); } }, label(c, id)))) : h('p.small', 'Şimdilik zorlanılan öğe yok.'), hard.length ? h('p.small.note', 'Dokunarak her antrenmana sabitleyebilirsiniz.') : null));
 
+    // Günün ev görevleri
+    const tasks = E.homeTasks(c), tstate = E.taskState(c);
+    wrap.appendChild(h('section.card', h('h2', 'Bugünün ev görevleri'), h('p.small', 'Çalışmanın günlük hayata taşınması için kısa öneriler. Yaptıkça işaretleyin.'),
+      h('div.tasks', tasks.map((t, i) => h('label.task', h('input', { type: 'checkbox', checked: !!tstate[i], onchange: (e) => { tstate[i] = e.target.checked; S.save(); } }), h('span', t))))));
+
+    // Etkinlik sonuçları
+    const acts = Object.keys(c.acts || {}).filter((id) => K.acts.A[id]);
+    wrap.appendChild(h('section.card', h('h2', 'Dinleme ve dil etkinlikleri'),
+      acts.length ? h('div.actlist', acts.sort((a, b) => c.acts[b].last - c.acts[a].last).map((id) => { const a = c.acts[id], pc = a.total ? Math.round(a.ok / a.total * 100) : 0; return h('div.actrow', h('span.ae', K.acts.A[id].e), h('div.utxt', h('b', K.acts.A[id].name), h('small', a.n + ' kez · ' + U.fmtDate(a.last))), h('div.pbar.small', h('i', { style: { width: pc + '%' } })), h('b.pct', '%' + pc)); }))
+        : h('p.small', 'Çocuk Etkinlikler bölümünden oyun oynadıkça sonuçlar burada görünür.'),
+      h('p.small.note', 'Yüzde, doğru yanıt ve veli işaretlerinden hesaplanır. Düşük skor bir değerlendirme değildir; hangi alanlarda daha çok destek verilebileceğini gösterir.')));
+
     // Son antrenmanlar
     const last = c.sessions.slice(-6).reverse();
-    wrap.appendChild(h('section.card', h('h2', 'Son antrenmanlar'), last.length ? h('div.sesslist', last.map((s) => h('div.sess', h('div.shead', h('b', U.fmtDate(s.t) + ' ' + U.fmtTime(s.t)), h('small', U.mmss(s.dur) + ' · ' + '⭐'.repeat(s.stars || 0))), h('div.smarks', (s.marks || []).filter((m) => m.id[0] !== 'm' && m.id[0] !== 'b').map((m) => h('span.sm', markIcon(m.r), label(c, m.id))))))) : h('p.small', 'Henüz antrenman yok. Çocuk ekranından başlayabilirsiniz.')));
+    wrap.appendChild(h('section.card', h('h2', 'Son antrenmanlar'), last.length ? h('div.sesslist', last.map((s) => h('div.sess', h('div.shead', h('b', U.fmtDate(s.t) + ' ' + U.fmtTime(s.t)), h('small', U.mmss(s.dur) + ' · ' + '⭐'.repeat(s.stars || 0))), h('div.smarks', (s.marks || []).filter((m) => m.id[0] !== 'm' && m.id[0] !== 'b' && !m.act).map((m) => h('span.sm', markIcon(m.r), label(c, m.id))))))) : h('p.small', 'Henüz antrenman yok. Çocuk ekranından başlayabilirsiniz.')));
 
     // Notlar
     const noteI = h('textarea.input', { rows: 2, placeholder: 'Gözleminizi yazın (örn. “ba hecesini yardımsız söyledi”)', maxlength: 300 });
@@ -120,6 +133,8 @@
       setting('Ağız ısınması', 'Her antrenmanın başında bir ağız oyunu', toggle(st.warmup, (v) => { st.warmup = v; S.save(); })),
       setting('Nefes oyunu', 'Isınmadan sonra kısa nefes çalışması', toggle(st.breath, (v) => { st.breath = v; S.save(); })),
       setting('Eski öğeleri tekrar et', 'Zorlanılan eski öğeler araya girer', toggle(st.review, (v) => { st.review = v; S.save(); })),
+      setting('Günün dil etkinliği', 'Her antrenmana 1 kısa dinleme/dil etkinliği ekler', toggle(st.langSlot !== false, (v) => { st.langSlot = v; S.save(); })),
+      setting('Kaplumbağa konuşma', 'Yavaş, rahat konuşma çalışmasını Etkinlikler’de gösterir (uzman önerisiyle)', toggle(!!st.slow, (v) => { st.slow = v; S.save(); })),
       setting('Otomatik ilerle', 'Ölçüt sağlanınca sonraki üniteye kendisi geçer. Kapalıyken siz onaylarsınız.', toggle(st.autoAdvance, (v) => { st.autoAdvance = v; S.save(); }))));
 
     // Hedef sesler
@@ -150,6 +165,8 @@
       c.custom.forEach((x) => arr.push(x));
       K.WORDS.forEach((x) => arr.push(x)); Object.keys(K.PHRASES).forEach((id) => arr.push(K.PHRASES[id]));
       K.UNITS.filter((u) => u.st === 2).forEach((u) => u.items.forEach((id) => { const it = K.getItem(id); if (it && !arr.includes(it)) arr.push(it); }));
+      ['a1', 'a2', 'l1'].forEach((uid) => K.UNIT_MAP[uid].items.forEach((id) => { const it = K.getItem(id); if (it && !arr.includes(it)) arr.push(it); }));
+      Object.keys(K.SLOW).forEach((id) => arr.push(K.SLOW[id]));
       [...K.VOWELS].forEach((v) => arr.push(K.VOW[v]));
       return arr;
     };
@@ -159,6 +176,7 @@
       if (f === 'pinned' && !c.pinned.includes(it.id)) return false;
       if (f === 'hidden' && !c.hidden.includes(it.id)) return false;
       if (['w', 's', 'v', 'c', 'p'].includes(f) && it.kind !== f) return false;
+      if (f === 'snd' && !['a', 'l', 'r', 't', 'k'].includes(it.kind)) return false;
       if (q) { const t = K.trLow(label(c, it.id)); if (!t.includes(K.trLow(q))) return false; }
       return true;
     };
@@ -167,7 +185,7 @@
       shown.forEach((it) => {
         const pinned = c.pinned.includes(it.id), hidden = c.hidden.includes(it.id), hasRec = recKeys.has('rec:' + it.id);
         rows.appendChild(h('div.librow' + (hidden ? '.hid' : ''),
-          h('span.lemoji', it.kind === 'w' || it.kind === 'p' ? (it.e || '🖼️') : K.trUp(label(c, it.id).slice(0, 3))),
+          h('span.lemoji', it.e || (it.kind === 'w' ? '🖼️' : K.trUp(label(c, it.id).slice(0, 3)))),
           h('div.ltxt', h('b', label(c, it.id)), h('small', kindName[it.kind] + (it.syl && it.kind === 'w' ? ' · ' + it.syl.join('-') : '') + (hasRec ? ' · 🎙 kendi sesiniz' : ''))),
           h('div.lact',
             h('button.iconlink', { 'aria-label': 'Dinle', onclick: () => K.audio.say(it) }, icon('speaker', 20)),
@@ -181,7 +199,7 @@
     }
     const countEl = h('small.count', '');
     const search = h('input.input', { type: 'search', placeholder: 'Ara (kelime, hece…)', 'aria-label': 'Ara', oninput: (e) => { q = e.target.value.trim(); limit = 40; draw(); } });
-    const FIL = [['all', 'Hepsi'], ['w', 'Kelime'], ['s', 'Hece'], ['v', 'Ünlü'], ['p', 'Cümle'], ['custom', 'Özel'], ['pinned', 'Sabit'], ['hidden', 'Gizli']];
+    const FIL = [['all', 'Hepsi'], ['w', 'Kelime'], ['s', 'Hece'], ['v', 'Ünlü'], ['p', 'Cümle'], ['snd', 'Ses/ritim'], ['custom', 'Özel'], ['pinned', 'Sabit'], ['hidden', 'Gizli']];
     const chips = h('div.chips.scroll', FIL.map(([id, n]) => h('button.chip' + (id === f ? '.on' : ''), { onclick: (e) => { f = id; limit = 40; [...chips.children].forEach((x) => x.classList.toggle('on', x === e.currentTarget)); draw(); } }, n)));
     wrap.appendChild(h('section.card', h('div.cardhead', h('h2', 'Kitaplık'), h('button.btn.sm', { onclick: () => addWordModal(c, redraw) }, icon('plus', 18), 'Kelime ekle')),
       h('p.small', 'Kendi sesinizi kaydedin (cihaz sesinden daha doğal), kelimeleri her antrenmana sabitleyin ya da gizleyin. Kendi kelimeniz için fotoğraf da ekleyebilirsiniz.'), search, chips, countEl));
@@ -234,7 +252,8 @@
       body.innerHTML = '';
       const now = Date.now(); const from = range === 'all' ? 0 : now - Number(range) * 86400000;
       const ss = c.sessions.filter((s) => s.t >= from);
-      const marks = ss.flatMap((s) => (s.marks || []).filter((m) => m.id[0] !== 'm' && m.id[0] !== 'b'));
+      const marks = ss.flatMap((s) => (s.marks || []).filter((m) => m.id[0] !== 'm' && m.id[0] !== 'b' && !m.act));
+      const gms = c.games.filter((g) => g.t >= from); const gAgg = {}; gms.forEach((g) => { const a = gAgg[g.type] || (gAgg[g.type] = { n: 0, ok: 0, total: 0 }); a.n++; a.ok += g.ok; a.total += g.total; });
       const cnt = [0, 0, 0]; marks.forEach((m) => cnt[m.r]++);
       const u = K.UNITS[c.cur];
       const first = c.sessions[0] ? U.fmtDate(c.sessions[0].t) : '-', last = c.sessions.length ? U.fmtDate(c.sessions[c.sessions.length - 1].t) : '-';
@@ -250,6 +269,8 @@
           row('Şu anki ünite', 'Ünite ' + (u.i + 1) + ': ' + u.t + ' (Aşama ' + u.st + ' – ' + K.STAGES[u.st - 1].name + ')'),
           row('Antrenman ayarları', c.settings.minutes + ' dk · ' + c.settings.perSession + ' öğe · ' + c.settings.reps + ' tekrar'),
           row('Odak sesler', c.settings.targets.length ? c.settings.targets.map(K.trUp).join(', ') : '—'))),
+        h('h3', 'Dinleme ve dil etkinlikleri'),
+        Object.keys(gAgg).filter((id) => K.acts.A[id]).length ? h('table.rtable', h('tbody', Object.keys(gAgg).filter((id) => K.acts.A[id]).map((id) => row(K.acts.A[id].name, gAgg[id].n + ' kez · %' + Math.round(gAgg[id].ok / gAgg[id].total * 100))))) : h('p', 'Bu dönemde etkinlik oynanmadı.'),
         h('h3', 'Ses / harf başarı oranları'),
         ls.length ? h('table.rtable', h('thead', h('tr', ls.map((l) => h('th', K.trUp(l))))), h('tbody', h('tr', ls.map((l) => h('td', '%' + Math.round(sounds[l].s / sounds[l].n * 100)))), h('tr.sm', ls.map((l) => h('td', sounds[l].n + ' den.'))))) : h('p', 'Yeterli veri yok (en az 3 deneme gerekir).'),
         h('h3', 'Rahat söylenen öğeler'), h('p', strong.length ? strong.map((id) => label(c, id)).join(', ') : '—'),
@@ -310,6 +331,13 @@
       'Konuşurken belirgin çaba, gerginlik, yüz buruşturma veya konuşmaktan kaçınma görüyorsanız.',
       '4–6 hafta düzenli çalışmaya rağmen belirgin ilerleme olmuyorsa.',
       'Bu uygulama bir terapinin yerine geçmez; terapist planını destekleyici bir ev çalışması aracı olarak kullanılabilir. Raporu terapistle paylaşabilirsiniz.']],
+    ['Etkinlikler (dinleme, dil, ses, hafıza)', [
+      'Antrenmana her gün kısa bir “dil etkinliği” de eklenir (Plan’dan kapatabilirsiniz). Çocuk dilerse Etkinlikler bölümünden serbestçe de oynar.',
+      'Dinleme oyunları (ilk sesi bul, kaç hece, kafiye, aynı mı farklı mı, ses yağmuru) konuşmadan önceki ses farkındalığını destekler. Doğru yanıt otomatik puanlanır.',
+      'Dil Dünyası etkinliklerinde (kelime kategorileri, eylemler, zıtlar, yönergeler, cümle kurma, soru-cevap, ekler, hikâye, duygular, günlük iletişim) çocuk söylediğinde siz “Rahat / Yaklaşık / Tekrar” dersiniz.',
+      'Hayvan ve araç sesleri, ritim, tekerleme ve ses şiddeti çalışmaları en erken seviye için güzel bir başlangıçtır; Ses ve Ritim bölümünde serbestçe de oynanır.',
+      'Ağız Aynası kamerada kendini gösterir; görüntü hiçbir yere kaydedilmez ve cihazdan çıkmaz. Hedef şekle gelip gelmediğini veli değerlendirir (otomatik takip yoktur).',
+      'Kaplumbağa konuşma yavaş ve rahat bir başlangıcı destekler; akıcılıkla ilgili bir endişeniz varsa bir dil ve konuşma terapistine danışarak kullanın.']],
     ['Veriler nerede? Kaybolur mu?', [
       'Tüm bilgiler bu cihazın tarayıcı depolamasındadır; hiçbir yere gönderilmez.',
       'Tarayıcı verileri silinir ya da cihaz değişirse veriler gider. Ayarlar > Yedek bölümünden düzenli yedek alın.',
